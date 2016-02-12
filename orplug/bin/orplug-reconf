@@ -1,0 +1,190 @@
+#!/system/bin/sh
+set -e
+
+PATH=/data/local/orplug/bin:$PATH
+. orplug-common
+
+fail() {
+	msg "error: in line '$LINE': $1"
+	exit 1
+}
+
+iso_list_deserialize() {
+	ISOLATION=$(xtables save4 | grep '^-A ORPLUG_ISOLATION ' | cut -d \" -f 2)
+}
+
+iso_list() {
+	grep . <<-END || true
+		$ISOLATION
+	END
+}
+
+iso_list_serialize() {
+	echo '-4 -F ORPLUG_ISOLATION'
+
+	iso_list |
+	sed -e 's/^/-4 -A ORPLUG_ISOLATION -m comment --comment "/' -e 's/$/"/'
+}
+
+iso_list_add_if_missing() {
+	if ! iso_number_get "$1" >/dev/null; then
+		_free=$(iso_number_get_free) || fail "no free isolation group found"
+		ISOLATION="$ISOLATION
+$_free $1"
+	fi
+}
+
+iso_number_get() {
+	iso_list | grep " $1$" | cut -d ' ' -f 1 | grep .
+}
+
+iso_number_get_free() {
+	{
+		iso_list | cut -d ' ' -f 1
+		seq 1 "$IsolationGroups"
+	} | sort -n | uniq -u | head -n 1 | grep .
+}
+
+abs_unix_id() {
+	echo "$(( $1 * 100000 + $2 ))"
+}
+
+test_uint() {
+	# "test string -ge 0" can be buggy on Android
+	test "$1" = 0 -o "$1" -gt 0
+}
+
+
+TRANS_TCP_REDIRECT='-4 -F ORPLUG_TRANS_TCP_REDIRECT'
+TRANS_DNS_REDIRECT='-4 -F ORPLUG_TRANS_DNS_REDIRECT'
+CLEAR_DNS_REDIRECT='-4 -F ORPLUG_CLEAR_DNS_REDIRECT'
+  OUT_TRANS_ACCEPT='-4 -F ORPLUG_OUT_TRANS_ACCEPT'
+ OUT_FENCED_ACCEPT='-4 -F ORPLUG_OUT_FENCED_ACCEPT'
+  OUT_CLEAR_ACCEPT='   -F ORPLUG_OUT_CLEAR_ACCEPT'
+    OUT_LAN_ACCEPT='   -F ORPLUG_OUT_LAN_ACCEPT'
+
+until out=`service check package` &&
+      test "$out" = 'Service package: found'; do
+	sleep 1
+done
+
+iso_list_deserialize
+
+test $# -gt 0 || set -- "$CONF"/rules/*.conf
+sed -e 's/#.*//' -e '/[^[:blank:]]/!d' -- "$@" |
+{
+while read -r LINE; do
+	access=trans
+	app=
+	unixuser=
+	unixgroup=
+	account=0
+	for field in $LINE; do
+		case "$field" in
+		access:*|app:*|unixuser:*|unixgroup:*|account:*)
+			eval "${field%%:*}=\${field#*:}"
+		;;
+		*)
+			fail "unknown field '$field'"
+		;;
+		esac
+	done
+
+	test_uint "$account" || fail "wrong number 'account:$account'"
+	${unixgroup:+test_uint "$unixgroup"} || fail "wrong number 'unixgroup:$unixgroup'"
+
+	set -- $app $unixuser $unixgroup
+	test $# -le 1 || fail "'app', 'unixuser', and 'unixgroup' exclude each other"
+
+	if test -n "$app"; then
+		if ! rel_id=$(dumpsys package "$app" |
+		              sed -e '/^ *userId=/!d' -e 's/.*=//' -e q |
+		              grep -Ex '[0-9]+'); then
+			msg "warning: skipping unknown app '$app'"
+			continue
+		fi
+		 abs_id=$(abs_unix_id $account $rel_id)
+		id_type=uid
+	elif test -n "$unixuser"; then
+		case "$unixuser" in
+		*[!0-9]*) rel_id=$(id -u "$unixuser") ;;
+		       *) rel_id=$unixuser ;;
+		esac
+		 abs_id=$(abs_unix_id $account $rel_id)
+		id_type=uid
+	elif test -n "$unixgroup"; then
+		 abs_id=$(abs_unix_id $account $unixgroup)
+		id_type=gid
+	else
+		 abs_id=$(abs_unix_id $account 0)-$(abs_unix_id $account 99999)
+		id_type=uid
+	fi
+	owned="-m owner --$id_type-owner $abs_id"
+
+	IFS_BAK=$IFS
+	IFS=,
+	for a in $access; do
+		case "$a" in
+		trans)
+			iso_list_add_if_missing "$id_type:$abs_id"
+			iso=$(iso_number_get    "$id_type:$abs_id")
+
+			TRANS_TCP_REDIRECT="$TRANS_TCP_REDIRECT
+				-4 -A ORPLUG_TRANS_TCP_REDIRECT $owned -p tcp -j REDIRECT --to-ports $(( TransPort0 + iso ))
+			"
+			TRANS_DNS_REDIRECT="$TRANS_DNS_REDIRECT
+				-4 -A ORPLUG_TRANS_DNS_REDIRECT $owned -p udp -j REDIRECT --to-ports $((   DNSPort0 + iso ))
+			"
+			OUT_TRANS_ACCEPT="$OUT_TRANS_ACCEPT
+				-4 -A ORPLUG_OUT_TRANS_ACCEPT   $owned        -j ACCEPT
+			"
+		;;
+		fenced)
+			OUT_FENCED_ACCEPT="$OUT_FENCED_ACCEPT
+				-4 -A ORPLUG_OUT_FENCED_ACCEPT  $owned        -j ACCEPT
+			"
+		;;
+		clear)
+			CLEAR_DNS_REDIRECT="$CLEAR_DNS_REDIRECT
+				-4 -A ORPLUG_CLEAR_DNS_REDIRECT $owned        -j DNAT --to-destination $ClearnetDNS
+			"
+			OUT_CLEAR_ACCEPT="$OUT_CLEAR_ACCEPT
+				   -A ORPLUG_OUT_CLEAR_ACCEPT   $owned        -j ACCEPT
+			"
+		;;
+		lan)
+			OUT_LAN_ACCEPT="$OUT_LAN_ACCEPT
+				   -A ORPLUG_OUT_LAN_ACCEPT     $owned        -j ACCEPT
+			"
+		;;
+		*)
+			fail "unknown access mode '$a'"
+		;;
+		esac
+	done
+	IFS=$IFS_BAK
+done
+
+RULES="
+	*nat
+	$TRANS_TCP_REDIRECT
+	$TRANS_DNS_REDIRECT
+	$CLEAR_DNS_REDIRECT
+	$(iso_list_serialize)
+	COMMIT
+
+	*filter
+	$OUT_TRANS_ACCEPT
+	$OUT_FENCED_ACCEPT
+	$OUT_CLEAR_ACCEPT
+	$OUT_LAN_ACCEPT
+	COMMIT
+
+	$(cat -- "$CONF"/rules/raw/*.conf)
+"
+
+trim_test_apply "$RULES"
+}
+
+setprop orplug.populated true
+msg populated

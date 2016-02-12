@@ -1,0 +1,43 @@
+# Transparently torify the microg service and F-Droid.
+access:trans app:com.google.android.gms
+app:org.fdroid.fdroid  # access:trans is the default
+
+# Transparently torify VLC for the device's main user, and also for a
+# secondary user with account number 10 (that's the first number in the
+# relevant "dumpsys user" line).
+app:org.videolan.vlc
+app:org.videolan.vlc account:10
+
+# Allow Orfox and ChatSecure to connect to Orbot on their own. Note that
+# we can't enforce circuit isolation here, the apps have to do it
+# themselves.
+access:fenced app:info.guardianproject.orfox
+access:fenced app:info.guardianproject.otr.app.im
+
+# Transparently torify a VoIP app as much as possible (TCP + DNS), but
+# allow clearnet access for the remainder, i.e. UDP voice packets.
+access:trans,clear app:com.csipsimple
+
+# Allow a home media streaming app access to local network servers. DNS
+# will still be blocked, even if the DNS servers are in the LAN.
+access:lan app:github.daneren2005.dsub
+
+# All access modes can be combined. (But "clear" implies "lan", so you
+# don't really have to specify both.)
+access:fenced,trans,lan,clear app:gov.cthulu.app account:20
+
+# Specify system daemons by symbolic/numeric Unix user, or by numeric
+# Unix group.
+unixuser:tlsdate
+access:fenced unixgroup:1234
+
+# Transparently torify every app and system process for this secondary
+# Android user account. Not recommended, because they'll share circuits
+# amongst each other.
+access:trans account:90
+
+##     Run orplug-reconf when you've changed the configuration, or when
+###    you've installed an app that was already listed.
+####
+###    If you remove an access mode, existing connections may continue
+##     until you kill the app.

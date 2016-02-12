@@ -1,0 +1,101 @@
+#!/system/bin/sh
+set -e
+
+PATH=/data/local/orplug/bin:$PATH
+. orplug-common
+
+RULES="
+    *nat
+    -4 -N ORPLUG
+    -4 -N ORPLUG_TCP
+    -4 -N ORPLUG_DNS
+    -4 -N ORPLUG_TRANS_TCP_REDIRECT  #
+    -4 -N ORPLUG_TRANS_DNS_REDIRECT  # populated by
+    -4 -N ORPLUG_CLEAR_DNS_REDIRECT  #  orplug-reconf
+    -4 -N ORPLUG_ISOLATION           #
+    -4 -A OUTPUT -j ORPLUG
+    -4     -A ORPLUG -p tcp --syn -j ORPLUG_TCP
+    -4         -A ORPLUG_TCP -d $VirtualAddrNetworkIPv4 -j ORPLUG_TRANS_TCP_REDIRECT
+    -4         -A ORPLUG_TCP -d   127.0.0.0/8           -j RETURN
+    -4         -A ORPLUG_TCP -d    10.0.0.0/8           -j RETURN
+    -4         -A ORPLUG_TCP -d  172.16.0.0/12          -j RETURN
+    -4         -A ORPLUG_TCP -d 192.168.0.0/16          -j RETURN
+    -4         -A ORPLUG_TCP -d 169.254.0.0/16          -j RETURN
+    -4         -A ORPLUG_TCP                            -j ORPLUG_TRANS_TCP_REDIRECT
+    -4     -A ORPLUG -p udp --dport 53       -j ORPLUG_DNS
+    -4     -A ORPLUG -p tcp --dport 53 --syn -j ORPLUG_DNS
+    -4         -A ORPLUG_DNS              -j ORPLUG_TRANS_DNS_REDIRECT
+    -4         -A ORPLUG_DNS -d 127.0.0.1 -j ORPLUG_CLEAR_DNS_REDIRECT
+    -4         -A ORPLUG_DNS              -j LOG --log-uid --log-prefix \"orplug: redirect to dnsmasq: \"
+    -4         -A ORPLUG_DNS              -j DNAT --to-destination 127.0.0.1
+    COMMIT
+
+    *filter
+       -N ORPLUG_OUT
+       -N ORPLUG_OUT_SELF
+       -N ORPLUG_OUT_SELF_DNS_TOR
+    -6 -N ORPLUG_OUT_SELF_DNS_MISC
+       -N ORPLUG_OUT_SELF_FENCED
+       -N ORPLUG_OUT_LAN
+       -N ORPLUG_OUT_FENCED_ACCEPT  #
+       -N ORPLUG_OUT_TRANS_ACCEPT   # populated by
+       -N ORPLUG_OUT_CLEAR_ACCEPT   #  orplug-reconf
+       -N ORPLUG_OUT_LAN_ACCEPT     #
+       -A OUTPUT -j ORPLUG_OUT
+           -A ORPLUG_OUT -m state --state INVALID             -j LOG --log-uid --log-prefix \"orplug: drop invalid out: \"
+           -A ORPLUG_OUT -m state --state INVALID             -j DROP
+           -A ORPLUG_OUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+    -4     -A ORPLUG_OUT -d $VirtualAddrNetworkIPv4           -j LOG --log-uid --log-prefix \"orplug: reject virtual out: \"
+    -4     -A ORPLUG_OUT -d $VirtualAddrNetworkIPv4           -j REJECT
+    -4     -A ORPLUG_OUT -d 127.0.0.1                         -j ORPLUG_OUT_SELF  # needed despite -o lo, because REDIRECT
+           -A ORPLUG_OUT -o lo                                -j ORPLUG_OUT_SELF  #  preserved the original out-interface
+               -A ORPLUG_OUT_SELF -p tcp --dport 9050 -j ORPLUG_OUT_SELF_FENCED
+               -A ORPLUG_OUT_SELF -p tcp --dport 8118 -j ORPLUG_OUT_SELF_FENCED
+                   -A ORPLUG_OUT_SELF_FENCED   -j ORPLUG_OUT_FENCED_ACCEPT
+                   -A ORPLUG_OUT_SELF_FENCED   -j LOG --log-uid --log-prefix \"orplug: reject fenced out: \"
+                   -A ORPLUG_OUT_SELF_FENCED   -j REJECT
+               -A ORPLUG_OUT_SELF -p udp --dport $DNSPort0:$(( DNSPort0 + IsolationGroups )) -j ORPLUG_OUT_SELF_DNS_TOR
+                   -A ORPLUG_OUT_SELF_DNS_TOR  -j ORPLUG_OUT_TRANS_ACCEPT
+                   -A ORPLUG_OUT_SELF_DNS_TOR  -j LOG --log-uid --log-prefix \"orplug: reject tor DNS out: \"
+                   -A ORPLUG_OUT_SELF_DNS_TOR  -j REJECT
+    -6         -A ORPLUG_OUT_SELF -p udp --dport 53 -j ORPLUG_OUT_SELF_DNS_MISC
+    -6         -A ORPLUG_OUT_SELF -p tcp --dport 53 -j ORPLUG_OUT_SELF_DNS_MISC
+    -6             -A ORPLUG_OUT_SELF_DNS_MISC -j ORPLUG_OUT_CLEAR_ACCEPT
+    -6             -A ORPLUG_OUT_SELF_DNS_MISC -j LOG --log-uid --log-prefix \"orplug: reject misc DNS out: \"
+    -6             -A ORPLUG_OUT_SELF_DNS_MISC -j REJECT
+               -A ORPLUG_OUT_SELF -j ACCEPT
+           -A ORPLUG_OUT                   -j ORPLUG_OUT_CLEAR_ACCEPT
+    -4     -A ORPLUG_OUT -d    10.0.0.0/8  -j ORPLUG_OUT_LAN
+    -4     -A ORPLUG_OUT -d  172.16.0.0/12 -j ORPLUG_OUT_LAN
+    -4     -A ORPLUG_OUT -d 192.168.0.0/16 -j ORPLUG_OUT_LAN
+    -4     -A ORPLUG_OUT -d 169.254.0.0/16 -j ORPLUG_OUT_LAN
+    -6     -A ORPLUG_OUT -d      fd00::/8  -j ORPLUG_OUT_LAN
+    -6     -A ORPLUG_OUT -d      fe80::/10 -j ORPLUG_OUT_LAN
+               -A ORPLUG_OUT_LAN -p udp --dport 53 -j RETURN
+               -A ORPLUG_OUT_LAN -p tcp --dport 53 -j RETURN
+               -A ORPLUG_OUT_LAN                   -j ORPLUG_OUT_LAN_ACCEPT
+           -A ORPLUG_OUT -j LOG --log-uid --log-prefix \"orplug: reject out: \"
+           -A ORPLUG_OUT -j REJECT
+
+       -N ORPLUG_IN
+       -N ORPLUG_IN_ACCEPT  # populated by orplug-reconf from conf/rules/raw/*.conf
+       -A INPUT -j ORPLUG_IN
+           -A ORPLUG_IN -m state --state ESTABLISHED,RELATED -j ACCEPT
+           -A ORPLUG_IN -i lo                                -j ACCEPT
+           -A ORPLUG_IN                                      -j ORPLUG_IN_ACCEPT
+           -A ORPLUG_IN                                      -j LOG  --log-uid --log-prefix \"orplug: reject in: \"
+           -A ORPLUG_IN -p tcp                               -j REJECT --reject-with tcp-reset
+           -A ORPLUG_IN                                      -j REJECT
+    COMMIT
+"
+
+trim_test_apply "$RULES"
+
+setprop orplug.up true
+msg up
+
+dnsmasq --conf-file --pid-file \
+        --bind-interfaces --interface=lo \
+        --no-resolv --no-hosts --log-queries
+
+exec orplug-reconf

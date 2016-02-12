@@ -1,0 +1,52 @@
+ CONF=/data/local/orplug/conf
+DEBUG=/data/local/orplug/debug
+ THIS=${0##*/}
+ PATH=/data/data/org.torproject.android/app_bin:$PATH
+
+test -t 0 || exec >"$DEBUG/$THIS.log" 2>&1
+for f in "$CONF"/*.conf; do . "$f"; done
+
+msg() {
+	printf '%s\n' "$THIS: $*" | tee /dev/kmsg >&2
+}
+
+restore() {
+	xtables restore$1 <<-END
+		$2
+	END
+}
+
+trim_test_apply() {
+	_rules=$(
+		{
+			sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e '/./!d' |
+			tee "$DEBUG"/last-rules.log
+		} <<-END
+			$1
+		END
+	)
+
+	# Test validity
+
+	restore '4 -nt'           "$_rules"
+	restore '6 -nt -T filter' "$_rules"
+
+	# Apply: Modifying a table can fail if something else tries to modify
+	# it at the same time, which is not unusual during boot. Retry every
+	# atomic operation several times if necessary.
+
+	for _opts in '4 -n -T filter' \
+	             '6 -n -T filter' \
+	             '4 -n -T nat'; do
+		_tries=10
+		while :; do
+			if restore "$_opts" "$_rules"; then
+				break
+			elif test $(( _tries = _tries - 1 )) -gt 0; then
+				sleep 1
+			else
+				return 1
+			fi
+		done
+	done
+}

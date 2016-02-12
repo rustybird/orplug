@@ -1,0 +1,12 @@
+diff --git a/rootdir/init.environ.rc.in b/rootdir/init.environ.rc.in
+index b34ea01..ead63d0 100644
+--- a/rootdir/init.environ.rc.in
++++ b/rootdir/init.environ.rc.in
+@@ -5,6 +5,7 @@ on init
+     export ANDROID_ASSETS /system/app
+     export ANDROID_DATA /data
+     export ANDROID_STORAGE /storage
++    export ANDROID_DNS_MODE local
+     export EXTERNAL_STORAGE /sdcard
+     export ASEC_MOUNTPOINT /mnt/asec
+     export BOOTCLASSPATH %BOOTCLASSPATH%
