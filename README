@@ -1,0 +1,127 @@
+orplug, an Android firewall with per-app Tor circuit isolation
+
+Not affiliated with the Tor Project.
+
+
+Short intro
+
+- No GUI, please write one ;)
+- Default deny pretty much everything. Combinable access policies for
+  individual apps, whole Android user accounts, etc.: transparent
+  torification (circuit-isolated per app), fenced off access to Socks/
+  Polipo, LAN access, clearnet access
+- Multi user account support
+- Doesn't leak IPv6 traffic
+- Clean DNS, but requires ANDROID_DNS_MODE=local ROM patch
+- Logs blocked DNS queries and blocked other packets
+- Input firewall allows sshd by default
+- Should work with enforcing SELinux
+- Includes the "--state INVALID" transproxy leak fix[1]
+- Tested on CyanogenMod 13 (Android 6.0.1 Marshmallow)
+
+
+Longer intro
+
+Really no GUI, unfortunately I don't have any talent for that. There's a
+simple plain text configuration format[2] though, and the command line
+"orplug-reconf" script could work as a backend to a graphical app. (It
+accepts stdin as well as files for configuration.)
+
+Unconfigured processes may only communicate with localhost and the
+loopback interface. You can configure an individual app, a Unix user/
+group, or an Android account:
+
+  - to be transparently torified, with circuit isolation per rule
+  - to be allowed access to local TCP ports 9050/8118 for native Orbot
+    support
+  - to be allowed LAN access (except DNS)
+  - to be allowed full clearnet access
+
+All of the above can be combined: Transparently torify a VoIP app as
+far as possible, but allow clearnet access for the remainder (UDP voice
+packets). Or, for a home media streaming app: transparent torification
+with LAN access.
+
+Rules can apply to the primary Android device user account or to other
+accounts.
+
+For incoming traffic, every port is blocked to the outside by default.
+But a hook loads files with raw ip(6)tables-restore rulesets, and one
+such ruleset allows TCP port 22 (sshd).
+
+The init script uses "su -c", which seems to set up everything properly
+SELinux-wise on CM13. I'm not really sure because I don't have a device
+that's able to run in enforcing mode.
+
+
+The DNS mess
+
+Android 4.3+ mixes DNS requests of all apps together by default[3]; when
+a request finally appears in Netfilter, it's unknown where it came from.
+orplug takes a strict approach and blocks this sludge, so it needs a ROM
+patched[4] to export the environment variable ANDROID_DNS_MODE=local
+during early boot.
+
+Unfortunately, ANDROID_DNS_MODE=local makes Android send DNS requests to
+127.0.0.1, instead of the value of the net.dns1 property. Until this is
+somehow fixed, a rule has been added to redirect allowed clearnet IPv4
+DNS traffic to $ClearnetDNS (defaults to Google's 8.8.8.8).
+
+orplug blocks disallowed DNS requests by sending them to a local dnsmasq
+instance that only logs queries (logcat | grep dnsmasq), but doesn't
+forward them. This is how I noticed that CM13 with "everything disabled"
+nevertheless attempts to connect to the hosts stats.cyanogenmod.org,
+account.cyngn.com, and shopvac.cyngn.com. (Via UID 1000, in this case
+the Settings package.)
+
+
+Captive portals
+
+Enable clearnet access for either UID 1000 (beware of the random stuff
+apparently floating around there), or for a dedicated browser (and run
+"settings put global captive_portal_detection_enabled 0" as root).
+
+
+Installation
+
+0. Set up some independent way to check for leaks, e.g. corridor[5].
+   You've been warned...
+1. Copy the orplug subdirectory to /data/local/ on your Android device.
+   "chmod 755" 00-orplug, orplug-start, and orplug-reconf (all in
+   /data/local/orplug/bin/).
+2. Add the line ". /data/local/orplug/bin/00-orplug" (note the dot) to
+   /data/local/userinit.sh and run "chmod 755 userinit.sh".
+3. Copy the contents of /data/local/orplug/torrc-custom-config.txt into
+   the clipboard, e.g. using File Manager. This file contains directives
+   for tor to open 99 different TransPort and DNSPort ports.
+4. In Orbot's settings, paste the clipboard contents into "Torrc Custom
+   Config", disable "Transparent Proxying", disable "Request Root
+   Access", and choose "Proxy None" in "Select Apps" (that last one only
+   applies to current prereleases of Orbot).
+5. Reboot your device.
+6. Check that orplug has brought the firewall up: The output of
+   "getprop orplug.up" is supposed to say "true". Log files are in
+   /data/local/orplug/debug/ in case it didn't work.
+7. Configure your apps by creating one ore more .conf file(s) in
+   /data/local/orplug/conf/ (there's a commented user.conf.example[2]).
+8. Run "su -c /data/local/orplug/bin/orplug-reconf". The output is
+   supposed to say "orplug-reconf: populated". This will happen
+   automatically if you reboot.
+
+
+Footnotes
+
+1. "--state INVALID" transproxy leak fix
+https://lists.torproject.org/pipermail/tor-talk/2014-March/032507.html
+
+2. Example orplug configuration
+https://raw.githubusercontent.com/rustybird/orplug/master/orplug/conf/rules/90-user.conf.example
+
+3. Explanation of DNS in Android 4.3+
+http://forum.xda-developers.com/showthread.php?t=2386584
+
+4. ANDROID_DNS_MODE=local patch (affects only "make bootimage")
+https://raw.githubusercontent.com/rustybird/orplug/master/system-core-ANDROID_DNS_MODE.patch
+
+5. corridor, a Tor traffic whitelisting gateway
+https://github.com/rustybird/corridor
