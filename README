@@ -3,7 +3,7 @@ orplug, an Android firewall with per-app Tor circuit isolation
 Not affiliated with the Tor Project.
 
 
-Short intro
+    Short intro
 
 - No GUI, please write one ;)
 - Default deny pretty much everything. Combinable access policies for
@@ -20,7 +20,7 @@ Short intro
 - Tested on CyanogenMod 13 (Android 6.0.1 Marshmallow)
 
 
-Longer intro
+    Longer intro
 
 Really no GUI, unfortunately I don't have any talent for that. There's a
 simple plain text configuration format[2] though, and the command line
@@ -54,7 +54,7 @@ SELinux-wise on CM13. I'm not really sure because I don't have a device
 that's able to run in enforcing mode.
 
 
-The DNS mess
+    The DNS mess
 
 Android 4.3+ mixes DNS requests of all apps together by default[3]; when
 a request finally appears in Netfilter, it's unknown where it came from.
@@ -75,14 +75,14 @@ account.cyngn.com, and shopvac.cyngn.com. (Via UID 1000, in this case
 the Settings package.)
 
 
-Captive portals
+    Captive portals
 
 Enable clearnet access for either UID 1000 (beware of the random stuff
 apparently floating around there), or for a dedicated browser (and run
 "settings put global captive_portal_detection_enabled 0" as root).
 
 
-Installation
+    Installation
 
 0. Set up some independent way to check for leaks, e.g. corridor[5].
    You've been warned...
@@ -109,7 +109,7 @@ Installation
    automatically if you reboot.
 
 
-Footnotes
+    Footnotes
 
 1. "--state INVALID" transproxy leak fix
 https://lists.torproject.org/pipermail/tor-talk/2014-March/032507.html
