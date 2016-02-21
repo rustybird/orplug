@@ -89,7 +89,7 @@ apparently floating around there), or for a dedicated browser (and run
 1. Copy the orplug subdirectory to /data/local/ on your Android device.
    "chmod 755" 00-orplug, orplug-start, and orplug-reconf (all in
    /data/local/orplug/bin/).
-2. Add the line ". /data/local/orplug/bin/00-orplug" (note the dot) to
+2. Add the line "su -c /data/local/orplug/bin/orplug-start" to
    /data/local/userinit.sh and run "chmod 755 userinit.sh".
 3. Copy the contents of /data/local/orplug/torrc-custom-config.txt into
    the clipboard, e.g. using File Manager. This file contains directives

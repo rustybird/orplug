@@ -1,3 +1,11 @@
 #!/system/bin/sh
 
-su -c 'exec /data/local/orplug/bin/orplug-start'
+su -c '
+	set -e
+
+	PATH=${ORPLUG_BIN-/data/local/orplug/bin}:$PATH
+	. orplug-common
+
+	msg "warning: 00-orplug is deprecated, see README for new instructions"
+	exec orplug-start
+'
