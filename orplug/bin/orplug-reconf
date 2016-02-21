@@ -14,9 +14,7 @@ iso_list_deserialize() {
 }
 
 iso_list() {
-	grep . <<-END || true
-		$ISOLATION
-	END
+	print "$ISOLATION" | grep .
 }
 
 iso_list_serialize() {
