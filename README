@@ -86,9 +86,8 @@ apparently floating around there), or for a dedicated browser (and run
 
 0. Set up some independent way to check for leaks, e.g. corridor[5].
    You've been warned...
-1. Copy the orplug subdirectory to /data/local/ on your Android device.
-   "chmod 755" 00-orplug, orplug-start, and orplug-reconf (all in
-   /data/local/orplug/bin/).
+1. Copy the orplug subdirectory to /data/local/ on your Android device
+   and run "chmod 755 /data/local/orplug/bin/*".
 2. Add the line "su -c /data/local/orplug/bin/orplug-start" to
    /data/local/userinit.sh and run "chmod 755 userinit.sh".
 3. Copy the contents of /data/local/orplug/torrc-custom-config.txt into
@@ -107,6 +106,8 @@ apparently floating around there), or for a dedicated browser (and run
 8. Run "su -c /data/local/orplug/bin/orplug-reconf". The output is
    supposed to say "orplug-reconf: populated". This will happen
    automatically if you reboot.
+9. To help you configure a newly installed app, you can run
+   "su -c /data/local/orplug/bin/orplug-newapp".
 
 
     Footnotes

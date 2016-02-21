@@ -1,0 +1,68 @@
+#!/system/bin/sh
+set -e
+
+PATH=${ORPLUG_BIN-/data/local/orplug/bin}:$PATH
+. orplug-common
+
+: ${ORPLUG_CONF_RULES_NEWAPP=$ORPLUG_CONF/rules/95-user-newapp.conf}
+
+
+# usage
+
+case "$1" in -*)
+	exec cat >&2 <<-END
+		Usage:
+		  $THIS [rest of configuration line]
+
+		  Appends a configuration line for the last installed app
+		  (after asking for confirmation) and runs orplug-reconf.
+
+		Examples:
+		  $THIS
+		  $THIS access:fenced account:10
+	END
+esac
+
+
+# find last installed app
+
+time_regex='[[:blank:]]firstInstallTime='
+ pkg_regex='[[:blank:]]Package \['
+
+pkgs=$(dumpsys package packages)
+
+last_pkg_time=$(print "$pkgs" |
+                grep -E "$time_regex" |
+                sort |
+                tail -n 1 |
+                grep .)
+
+last_pkg=$(print "$pkgs" |
+           grep -E "($time_regex|$pkg_regex)" |
+           grep -B 1 "$last_pkg_time" |
+           sed -e 's/.*\[//' -e 's/].*//' -e q |
+           grep .)
+
+
+# build config line and let user review it
+
+line=${*:+$* }app:$last_pkg
+
+echo -n "Add line '$line'? "
+read resp
+test "$resp" = y -o "$resp" = Y || exit 1
+
+
+# append config line to .conf file
+
+{
+	test ! -e "$ORPLUG_CONF_RULES_NEWAPP" || cat -- "$ORPLUG_CONF_RULES_NEWAPP"
+	print "$line"
+} >"$ORPLUG_CONF_RULES_NEWAPP.tmp"
+
+mv -- "$ORPLUG_CONF_RULES_NEWAPP.tmp" "$ORPLUG_CONF_RULES_NEWAPP"
+
+
+# reconfigure firewall
+
+exec orplug-reconf
