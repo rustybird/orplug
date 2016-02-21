@@ -19,10 +19,6 @@ msg() {
 	print "$THIS: $*" | tee /dev/kmsg >&2
 }
 
-restore() {
-	print "$2" | xtables restore$1
-}
-
 trim_test_apply() {
 	_rules=$(print "$1" |
 	         sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e '/./!d' |
@@ -30,19 +26,21 @@ trim_test_apply() {
 
 	# Test validity
 
-	restore '4 -nt'           "$_rules"
-	restore '6 -nt -T filter' "$_rules"
+	for _cmd in 'xtables restore4 -t -n' \
+	            'xtables restore6 -t -n -T filter'; do
+		print "$_rules" | $_cmd
+	done
 
 	# Apply: Modifying a table can fail if something else tries to modify
 	# it at the same time, which is not unusual during boot. Retry every
 	# atomic operation several times if necessary.
 
-	for _opts in '4 -n -T filter' \
-	             '6 -n -T filter' \
-	             '4 -n -T nat'; do
+	for _cmd in 'xtables restore4 -n -T filter' \
+	            'xtables restore6 -n -T filter' \
+	            'xtables restore4 -n -T nat'; do
 		_tries=10
 		while :; do
-			if restore "$_opts" "$_rules"; then
+			if print "$_rules" | $_cmd; then
 				break
 			elif test $(( _tries = _tries - 1 )) -gt 0; then
 				sleep 1
