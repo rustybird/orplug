@@ -1,7 +1,7 @@
 #!/system/bin/sh
 set -e
 
-PATH=/data/local/orplug/bin:$PATH
+PATH=${ORPLUG_BIN-/data/local/orplug/bin}:$PATH
 . orplug-common
 
 RULES="

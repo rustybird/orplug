@@ -1,10 +1,11 @@
- CONF=/data/local/orplug/conf
-DEBUG=/data/local/orplug/debug
- THIS=${0##*/}
- PATH=/data/data/org.torproject.android/app_bin:$PATH
+: ${ORPLUG_CONF=/data/local/orplug/conf}
+: ${ORPLUG_DEBUG=/data/local/orplug/debug}
 
-test -t 0 || exec >"$DEBUG/$THIS.log" 2>&1
-for f in "$CONF"/*.conf; do . "$f"; done
+THIS=${0##*/}
+PATH=/data/data/org.torproject.android/app_bin:$PATH
+
+test -t 0 || exec >"$ORPLUG_DEBUG/$THIS.log" 2>&1
+for f in "$ORPLUG_CONF"/*.conf; do . "$f"; done
 
 print() {
 	# 'printf %s\\n "$*"' could fail if printf is not a builtin
@@ -22,7 +23,7 @@ msg() {
 trim_test_apply() {
 	_rules=$(print "$1" |
 	         sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e '/./!d' |
-	         tee "$DEBUG"/last-rules.log)
+	         tee "$ORPLUG_DEBUG"/last-rules.log)
 
 	# Test validity
 

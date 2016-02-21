@@ -1,7 +1,7 @@
 #!/system/bin/sh
 set -e
 
-PATH=/data/local/orplug/bin:$PATH
+PATH=${ORPLUG_BIN-/data/local/orplug/bin}:$PATH
 . orplug-common
 
 fail() {
@@ -68,7 +68,7 @@ done
 
 iso_list_deserialize
 
-test $# -gt 0 || set -- "$CONF"/rules/*.conf
+test $# -gt 0 || set -- "$ORPLUG_CONF"/rules/*.conf
 sed -e 's/#.*//' -e '/[^[:blank:]]/!d' -- "$@" |
 {
 while read -r LINE; do
@@ -178,7 +178,7 @@ RULES="
 	$OUT_LAN_ACCEPT
 	COMMIT
 
-	$(cat -- "$CONF"/rules/raw/*.conf)
+	$(cat -- "$ORPLUG_CONF"/rules/raw/*.conf)
 "
 
 trim_test_apply "$RULES"
