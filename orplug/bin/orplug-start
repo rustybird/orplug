@@ -90,12 +90,11 @@ RULES="
 "
 
 trim_test_apply "$RULES"
-
-setprop orplug.up true
-msg up
-
 dnsmasq --conf-file --pid-file \
         --bind-interfaces --interface=lo \
         --no-resolv --no-hosts --log-queries
+
+setprop orplug.up true
+msg up
 
 exec orplug-reconf
