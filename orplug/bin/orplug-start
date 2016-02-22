@@ -9,10 +9,11 @@ RULES="
     -4 -N ORPLUG
     -4 -N ORPLUG_TCP
     -4 -N ORPLUG_DNS
-    -4 -N ORPLUG_TCP_TRANS_REDIRECT  #
-    -4 -N ORPLUG_DNS_TRANS_REDIRECT  # populated by
-    -4 -N ORPLUG_DNS_CLEAR_REDIRECT  #  orplug-reconf
     -4 -N ORPLUG_ISOLATION           #
+    -4 -N ORPLUG_TCP_TRANS_REDIRECT  # populated by
+    -4 -N ORPLUG_DNS_TRANS_REDIRECT  #  orplug-reconf
+    -4 -N ORPLUG_DNS_MISC            #
+    -4 -N ORPLUG_DNS_MISC_REDIRECT
     -4 -A OUTPUT -j ORPLUG
     -4     -A ORPLUG -p tcp --syn -j ORPLUG_TCP
     -4         -A ORPLUG_TCP -d $VirtualAddrNetworkIPv4 -j ORPLUG_TCP_TRANS_REDIRECT
@@ -24,10 +25,11 @@ RULES="
     -4         -A ORPLUG_TCP                            -j ORPLUG_TCP_TRANS_REDIRECT
     -4     -A ORPLUG -p udp --dport 53       -j ORPLUG_DNS
     -4     -A ORPLUG -p tcp --dport 53 --syn -j ORPLUG_DNS
-    -4         -A ORPLUG_DNS              -j ORPLUG_DNS_TRANS_REDIRECT
-    -4         -A ORPLUG_DNS -d 127.0.0.1 -j ORPLUG_DNS_CLEAR_REDIRECT
-    -4         -A ORPLUG_DNS              -j LOG --log-uid --log-prefix \"orplug: redirect to dnsmasq: \"
-    -4         -A ORPLUG_DNS              -j DNAT --to-destination 127.0.0.1
+    -4         -A ORPLUG_DNS -j ORPLUG_DNS_TRANS_REDIRECT
+    -4         -A ORPLUG_DNS -j ORPLUG_DNS_MISC
+    -4             -A ORPLUG_DNS_MISC -j ORPLUG_DNS_MISC_REDIRECT
+    -4                 -A ORPLUG_DNS_MISC_REDIRECT -j LOG --log-uid --log-prefix \"orplug: redirect to dnsmasq: \"
+    -4                 -A ORPLUG_DNS_MISC_REDIRECT -j REDIRECT
     COMMIT
 
     *filter
@@ -89,6 +91,7 @@ RULES="
     COMMIT
 "
 
+setprop net.dnscache 0
 trim_test_apply "$RULES"
 dnsmasq --conf-file --pid-file \
         --bind-interfaces --interface=lo \

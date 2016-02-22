@@ -1,0 +1,26 @@
+From 6f80aa2e5d648ec0d06a8adf52c7aaa7af247eb5 Mon Sep 17 00:00:00 2001
+From: Rusty Bird <rustybird@openmailbox.org>
+Date: Mon, 22 Feb 2016 16:26:06 +0000
+Subject: [external/sepolicy] Allow setfsuid and setfsgid syscalls for netd
+
+Change-Id: I206fc0684dcecd3e94f63b8c5fda3a93db3c7b00
+---
+ netd.te | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/netd.te b/netd.te
+index 2c0fb15..b99b9c0 100644
+--- a/netd.te
++++ b/netd.te
+@@ -5,7 +5,7 @@ type netd_exec, exec_type, file_type;
+ init_daemon_domain(netd)
+ net_domain(netd)
+ 
+-allow netd self:capability { net_admin net_raw kill };
++allow netd self:capability { net_admin net_raw kill setuid setgid };
+ # Note: fsetid is deliberately not included above. fsetid checks are
+ # triggered by chmod on a directory or file owned by a group other
+ # than one of the groups assigned to the current process to see if
+-- 
+2.5.0
+

@@ -1,0 +1,86 @@
+From 1c229037f7444cd1887756dc3eb324723153f90b Mon Sep 17 00:00:00 2001
+From: Rusty Bird <rustybird@openmailbox.org>
+Date: Mon, 22 Feb 2016 16:25:00 +0000
+Subject: [system/netd] Copy client's uid and gid into thread's fsuid and fsgid
+
+Inspired by
+https://github.com/cernekee/dnsproxy2/commit/0708140aa747764a125b5189cace005773e30a24
+
+Change-Id: Iff5ac21c0ee57f337bbc414a53aea6dfe9704aae
+---
+ server/DnsProxyListener.cpp | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/server/DnsProxyListener.cpp b/server/DnsProxyListener.cpp
+index 6c71c5b..1d27284 100644
+--- a/server/DnsProxyListener.cpp
++++ b/server/DnsProxyListener.cpp
+@@ -27,6 +27,8 @@
+ #include <pthread.h>
+ #include <resolv_netid.h>
+ #include <net/if.h>
++#include <unistd.h>
++#include <sys/syscall.h>
+ 
+ #define LOG_TAG "DnsProxyListener"
+ #define DBG 0
+@@ -41,6 +43,22 @@
+ #include "NetworkController.h"
+ #include "ResponseCode.h"
+ 
++// Copy the client's uid and gid into the thread's fsuid and fsgid,
++// so Netfilter rules can see who caused subsequent DNS packets
++static bool setfsids(SocketClient* c) {
++    bool success = true;
++
++    if (syscall(__NR_setfsuid, c->getUid()) != 0) {
++        ALOGE("setfsids setfsuid errno: %s\n", strerror(errno));
++        success = false;
++    }
++    if (syscall(__NR_setfsgid, c->getGid()) != 0) {
++        ALOGE("setfsids setfsgid errno: %s\n", strerror(errno));
++        success = false;
++    }
++    return success;
++}
++
+ DnsProxyListener::DnsProxyListener(const NetworkController* netCtrl) :
+         FrameworkListener("dnsproxyd"), mNetCtrl(netCtrl) {
+     registerCmd(new GetAddrInfoCmd(this));
+@@ -162,6 +180,10 @@ void DnsProxyListener::GetAddrInfoHandler::run() {
+                 mNetContext.uid);
+     }
+ 
++    if (!setfsids(mClient)) {
++        return;
++    }
++
+     struct addrinfo* result = NULL;
+     uint32_t rv = android_getaddrinfofornetcontext(mHost, mService, mHints, &mNetContext, &result);
+     if (rv) {
+@@ -345,6 +367,10 @@ void DnsProxyListener::GetHostByNameHandler::run() {
+         ALOGD("DnsProxyListener::GetHostByNameHandler::run\n");
+     }
+ 
++    if (!setfsids(mClient)) {
++        return;
++    }
++
+     struct hostent* hp;
+ 
+     hp = android_gethostbynamefornet(mName, mAf, mNetId, mMark);
+@@ -461,6 +487,11 @@ void DnsProxyListener::GetHostByAddrHandler::run() {
+     if (DBG) {
+         ALOGD("DnsProxyListener::GetHostByAddrHandler::run\n");
+     }
++
++    if (!setfsids(mClient)) {
++        return;
++    }
++
+     struct hostent* hp;
+ 
+     // NOTE gethostbyaddr should take a void* but bionic thinks it should be char*
+-- 
+2.5.0
+

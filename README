@@ -12,7 +12,7 @@ Not affiliated with the Tor Project.
   Polipo, LAN access, clearnet access
 - Multi user account support
 - Doesn't leak IPv6 traffic
-- Clean DNS, but requires ANDROID_DNS_MODE=local ROM patch
+- Clean DNS, but requires three small ROM patches
 - Logs blocked DNS queries and blocked other packets
 - Input firewall allows sshd by default
 - Should work with enforcing SELinux
@@ -58,16 +58,10 @@ that's able to run in enforcing mode.
 
 Android 4.3+ mixes DNS requests of all apps together by default[3]; when
 a request finally appears in Netfilter, it's unknown where it came from.
-orplug takes a strict approach and blocks this sludge, so it needs a ROM
-patched[4] to export the environment variable ANDROID_DNS_MODE=local
-during early boot.
+orplug takes a strict approach, so it needs a ROM patched[4] to separate
+DNS queries. DNS will not work at all without these patches!
 
-Unfortunately, ANDROID_DNS_MODE=local makes Android send DNS requests to
-127.0.0.1, instead of the value of the net.dns1 property. Until this is
-somehow fixed, a rule has been added to redirect allowed clearnet IPv4
-DNS traffic to $ClearnetDNS (defaults to Google's 8.8.8.8).
-
-orplug blocks disallowed DNS requests by sending them to a local dnsmasq
+Disallowed DNS requests are blocked by sending them to a local dnsmasq
 instance that only logs queries (logcat | grep dnsmasq), but doesn't
 forward them. This is how I noticed that CM13 with "everything disabled"
 nevertheless attempts to connect to the hosts stats.cyanogenmod.org,
@@ -121,8 +115,10 @@ https://raw.githubusercontent.com/rustybird/orplug/master/orplug/conf/rules/90-u
 3. Explanation of DNS in Android 4.3+
 http://forum.xda-developers.com/showthread.php?t=2386584
 
-4. ANDROID_DNS_MODE=local patch (affects only "make bootimage")
-https://raw.githubusercontent.com/rustybird/orplug/master/system-core-ANDROID_DNS_MODE.patch
+4. Clean DNS ROM patches (in this repo)
+https://raw.githubusercontent.com/rustybird/orplug/master/system-netd.setfsids.patch
+https://raw.githubusercontent.com/rustybird/orplug/master/external-sepolicy.capabilties.patch
+https://raw.githubusercontent.com/rustybird/orplug/master/bionic.property.patch
 
 5. corridor, a Tor traffic whitelisting gateway
 https://github.com/rustybird/corridor
