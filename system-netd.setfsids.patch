@@ -1,30 +1,29 @@
-From 1c229037f7444cd1887756dc3eb324723153f90b Mon Sep 17 00:00:00 2001
+From 15b9620483f09837a24be5468e0d47feaa0c8141 Mon Sep 17 00:00:00 2001
 From: Rusty Bird <rustybird@openmailbox.org>
-Date: Mon, 22 Feb 2016 16:25:00 +0000
+Date: Mon, 29 Feb 2016 12:08:00 +0000
 Subject: [system/netd] Copy client's uid and gid into thread's fsuid and fsgid
 
 Inspired by
 https://github.com/cernekee/dnsproxy2/commit/0708140aa747764a125b5189cace005773e30a24
 
-Change-Id: Iff5ac21c0ee57f337bbc414a53aea6dfe9704aae
+Change-Id: I206fc0684dcecd3e94f63b8c5fda3a93db3c7b00
 ---
- server/DnsProxyListener.cpp | 31 +++++++++++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ server/DnsProxyListener.cpp | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
 diff --git a/server/DnsProxyListener.cpp b/server/DnsProxyListener.cpp
-index 6c71c5b..1d27284 100644
+index 6c71c5b..f1f1a90 100644
 --- a/server/DnsProxyListener.cpp
 +++ b/server/DnsProxyListener.cpp
-@@ -27,6 +27,8 @@
- #include <pthread.h>
- #include <resolv_netid.h>
- #include <net/if.h>
-+#include <unistd.h>
-+#include <sys/syscall.h>
- 
- #define LOG_TAG "DnsProxyListener"
- #define DBG 0
-@@ -41,6 +43,22 @@
+@@ -21,6 +21,7 @@
+ #include <netdb.h>
+ #include <netinet/in.h>
+ #include <stdlib.h>
++#include <sys/fsuid.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
+ #include <string.h>
+@@ -41,6 +42,22 @@
  #include "NetworkController.h"
  #include "ResponseCode.h"
  
@@ -33,11 +32,11 @@ index 6c71c5b..1d27284 100644
 +static bool setfsids(SocketClient* c) {
 +    bool success = true;
 +
-+    if (syscall(__NR_setfsuid, c->getUid()) != 0) {
++    if (setfsuid(c->getUid()) != 0) {
 +        ALOGE("setfsids setfsuid errno: %s\n", strerror(errno));
 +        success = false;
 +    }
-+    if (syscall(__NR_setfsgid, c->getGid()) != 0) {
++    if (setfsgid(c->getGid()) != 0) {
 +        ALOGE("setfsids setfsgid errno: %s\n", strerror(errno));
 +        success = false;
 +    }
@@ -47,7 +46,7 @@ index 6c71c5b..1d27284 100644
  DnsProxyListener::DnsProxyListener(const NetworkController* netCtrl) :
          FrameworkListener("dnsproxyd"), mNetCtrl(netCtrl) {
      registerCmd(new GetAddrInfoCmd(this));
-@@ -162,6 +180,10 @@ void DnsProxyListener::GetAddrInfoHandler::run() {
+@@ -162,6 +179,10 @@ void DnsProxyListener::GetAddrInfoHandler::run() {
                  mNetContext.uid);
      }
  
@@ -58,7 +57,7 @@ index 6c71c5b..1d27284 100644
      struct addrinfo* result = NULL;
      uint32_t rv = android_getaddrinfofornetcontext(mHost, mService, mHints, &mNetContext, &result);
      if (rv) {
-@@ -345,6 +367,10 @@ void DnsProxyListener::GetHostByNameHandler::run() {
+@@ -345,6 +366,10 @@ void DnsProxyListener::GetHostByNameHandler::run() {
          ALOGD("DnsProxyListener::GetHostByNameHandler::run\n");
      }
  
@@ -69,7 +68,7 @@ index 6c71c5b..1d27284 100644
      struct hostent* hp;
  
      hp = android_gethostbynamefornet(mName, mAf, mNetId, mMark);
-@@ -461,6 +487,11 @@ void DnsProxyListener::GetHostByAddrHandler::run() {
+@@ -461,6 +486,11 @@ void DnsProxyListener::GetHostByAddrHandler::run() {
      if (DBG) {
          ALOGD("DnsProxyListener::GetHostByAddrHandler::run\n");
      }
