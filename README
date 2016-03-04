@@ -89,8 +89,7 @@ apparently floating around there), or for a dedicated browser (and run
    for tor to open 99 different TransPort and DNSPort ports.
 4. In Orbot's settings, paste the clipboard contents into "Torrc Custom
    Config", disable "Transparent Proxying", disable "Request Root
-   Access", and choose "Proxy None" in "Select Apps" (that last one only
-   applies to current prereleases of Orbot).
+   Access", and choose "Proxy None" in "Select Apps".
 5. Reboot your device.
 6. Check that orplug has brought the firewall up: The output of
    "getprop orplug.up" is supposed to say "true". Log files are in
