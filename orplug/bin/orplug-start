@@ -93,7 +93,7 @@ RULES="
 
 setprop net.dnscache 0
 trim_test_apply "$RULES"
-dnsmasq --conf-file --pid-file \
+dnsmasq --conf-file= --pid-file= \
         --bind-interfaces --interface=lo \
         --no-resolv --no-hosts --log-queries
 
