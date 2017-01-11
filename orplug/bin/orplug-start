@@ -15,7 +15,7 @@ RULES="
     -4 -N ORPLUG_DNS_MISC            #
     -4 -N ORPLUG_DNS_MISC_REDIRECT
     -4 -A OUTPUT -j ORPLUG
-    -4     -A ORPLUG -p tcp --syn -j ORPLUG_TCP
+    -4     -A ORPLUG -p tcp -j ORPLUG_TCP
     -4         -A ORPLUG_TCP -d $VirtualAddrNetworkIPv4 -j ORPLUG_TCP_TRANS_REDIRECT
     -4         -A ORPLUG_TCP -d   127.0.0.0/8           -j RETURN
     -4         -A ORPLUG_TCP -d    10.0.0.0/8           -j RETURN
@@ -23,8 +23,8 @@ RULES="
     -4         -A ORPLUG_TCP -d 192.168.0.0/16          -j RETURN
     -4         -A ORPLUG_TCP -d 169.254.0.0/16          -j RETURN
     -4         -A ORPLUG_TCP                            -j ORPLUG_TCP_TRANS_REDIRECT
-    -4     -A ORPLUG -p udp --dport 53       -j ORPLUG_DNS
-    -4     -A ORPLUG -p tcp --dport 53 --syn -j ORPLUG_DNS
+    -4     -A ORPLUG -p udp --dport 53 -j ORPLUG_DNS
+    -4     -A ORPLUG -p tcp --dport 53 -j ORPLUG_DNS
     -4         -A ORPLUG_DNS -j ORPLUG_DNS_TRANS_REDIRECT
     -4         -A ORPLUG_DNS -j ORPLUG_DNS_MISC
     -4             -A ORPLUG_DNS_MISC -j ORPLUG_DNS_MISC_REDIRECT
