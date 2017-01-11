@@ -111,9 +111,9 @@ https://raw.githubusercontent.com/rustybird/orplug/master/orplug/conf/rules/90-u
 http://forum.xda-developers.com/showthread.php?t=2386584
 
 4. Clean DNS ROM patches (in this repo)
-https://raw.githubusercontent.com/rustybird/orplug/master/system-netd.setfsids.patch
-https://raw.githubusercontent.com/rustybird/orplug/master/external-sepolicy.capabilties.patch
-https://raw.githubusercontent.com/rustybird/orplug/master/bionic.property.patch
+https://raw.githubusercontent.com/rustybird/orplug/master/android-patches/system-netd.setfsids.patch
+https://raw.githubusercontent.com/rustybird/orplug/master/android-patches/external-sepolicy.capabilties.patch
+https://raw.githubusercontent.com/rustybird/orplug/master/android-patches/bionic.property.patch
 
 5. corridor, a Tor traffic whitelisting gateway
 https://github.com/rustybird/corridor
