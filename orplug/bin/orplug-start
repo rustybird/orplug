@@ -46,6 +46,8 @@ RULES="
        -A OUTPUT -j ORPLUG_OUT
            -A ORPLUG_OUT -m state --state INVALID             -j LOG --log-uid --log-prefix \"orplug: drop invalid out: \"
            -A ORPLUG_OUT -m state --state INVALID             -j DROP
+           -A ORPLUG_OUT -m state --state UNTRACKED           -j LOG --log-uid --log-prefix \"orplug: drop untracked out: \"
+           -A ORPLUG_OUT -m state --state UNTRACKED           -j DROP
            -A ORPLUG_OUT -m state --state ESTABLISHED,RELATED -j ACCEPT
     -4     -A ORPLUG_OUT -d $VirtualAddrNetworkIPv4           -j LOG --log-uid --log-prefix \"orplug: reject virtual out: \"
     -4     -A ORPLUG_OUT -d $VirtualAddrNetworkIPv4           -j REJECT
