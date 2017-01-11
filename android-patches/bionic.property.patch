@@ -1,18 +1,17 @@
-From 9400db2b6059360a2c5a8017cb0cbe7e73d2fec5 Mon Sep 17 00:00:00 2001
+From ec22f7dffc14e04fdceee6567713648be8078d39 Mon Sep 17 00:00:00 2001
 From: Rusty Bird <rustybird@openmailbox.org>
-Date: Mon, 22 Feb 2016 16:27:41 +0000
+Date: Wed, 11 Jan 2017 14:46:37 +0000
 Subject: [bionic] Add net.dnscache property, like BIONIC_DNSCACHE env variable
 
-Change-Id: I6fe2f21d063a74e6650565564af151858daf5c32
 ---
  libc/dns/resolv/res_cache.c | 11 +++++++----
  1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/libc/dns/resolv/res_cache.c b/libc/dns/resolv/res_cache.c
-index 5a78450..ccd6450 100644
+index ad2c5c0..d8586f5 100644
 --- a/libc/dns/resolv/res_cache.c
 +++ b/libc/dns/resolv/res_cache.c
-@@ -98,11 +98,12 @@
+@@ -99,11 +99,12 @@
   *     is too short to accomodate the cached result.
   */
  
@@ -28,7 +27,7 @@ index 5a78450..ccd6450 100644
  
  /* default number of entries kept in the cache. This value has been
   * determined by browsing through various sites and counting the number
-@@ -1806,8 +1807,10 @@ static void
+@@ -1815,8 +1816,10 @@ static void
  _res_cache_init(void)
  {
      const char*  env = getenv(CONFIG_ENV);
@@ -41,5 +40,5 @@ index 5a78450..ccd6450 100644
          return;
      }
 -- 
-2.5.0
+2.1.4
 

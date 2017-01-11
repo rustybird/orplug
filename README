@@ -17,7 +17,7 @@ Not affiliated with the Tor Project.
 - Input firewall allows sshd by default
 - Should work with enforcing SELinux
 - Includes the "--state INVALID" transproxy leak fix[1]
-- Tested on CyanogenMod 13 (Android 6.0.1 Marshmallow)
+- Tested on Android 7.1.1 (Nougat)
 
 
     Longer intro
