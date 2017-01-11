@@ -49,10 +49,6 @@ For incoming traffic, every port is blocked to the outside by default.
 But a hook loads files with raw ip(6)tables-restore rulesets, and one
 such ruleset allows TCP port 22 (sshd).
 
-The init script uses "su -c", which seems to set up everything properly
-SELinux-wise on CM13. I'm not really sure because I don't have a device
-that's able to run in enforcing mode.
-
 
     The DNS mess
 
