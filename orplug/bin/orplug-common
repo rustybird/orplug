@@ -2,7 +2,6 @@
 : ${ORPLUG_DEBUG=/data/local/orplug/debug}
 
 THIS=${0##*/}
-PATH=/data/data/org.torproject.android/app_bin:$PATH
 
 test -t 0 || exec >"$ORPLUG_DEBUG/$THIS.log" 2>&1
 for f in "$ORPLUG_CONF"/*.conf; do . "$f"; done
@@ -27,8 +26,8 @@ trim_test_apply() {
 
 	# Test validity
 
-	for _cmd in 'xtables restore4 -t -n' \
-	            'xtables restore6 -t -n -T filter'; do
+	for _cmd in 'iptables-restore  -t -n' \
+	            'ip6tables-restore -t -n -T filter'; do
 		print "$_rules" | $_cmd
 	done
 
@@ -36,9 +35,9 @@ trim_test_apply() {
 	# it at the same time, which is not unusual during boot. Retry every
 	# atomic operation several times if necessary.
 
-	for _cmd in 'xtables restore4 -n -T filter' \
-	            'xtables restore6 -n -T filter' \
-	            'xtables restore4 -n -T nat'; do
+	for _cmd in 'iptables-restore  -n -T filter' \
+	            'ip6tables-restore -n -T filter' \
+	            'iptables-restore  -n -T nat'; do
 		_tries=10
 		while :; do
 			if print "$_rules" | $_cmd; then

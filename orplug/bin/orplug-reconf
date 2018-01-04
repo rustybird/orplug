@@ -10,7 +10,7 @@ fail() {
 }
 
 iso_list_deserialize() {
-	ISOLATION=$(xtables save4 | grep '^-A ORPLUG_ISOLATION ' | cut -d \" -f 2)
+	ISOLATION=$(iptables-save | grep '^-A ORPLUG_ISOLATION ' | cut -d \" -f 2)
 }
 
 iso_list() {
